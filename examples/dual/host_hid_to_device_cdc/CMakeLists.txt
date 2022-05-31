@@ -1,5 +1,11 @@
 cmake_minimum_required(VERSION 3.5)
 
+set (CMAKE_BUILD_TYPE "Debug")
+set (FAMILY "rp2040")
+add_compile_definitions(PIO_USB_DP_PIN_DEFAULT=2)
+add_compile_definitions(LED_PIN=16)
+add_compile_definitions(LED_STATE_ON=1)
+
 include(${CMAKE_CURRENT_SOURCE_DIR}/../../../hw/bsp/family_support.cmake)
 
 # gets PROJECT name for the example (e.g. <BOARD>-<DIR_NAME>)

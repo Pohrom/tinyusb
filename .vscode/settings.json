@@ -1,0 +1,4 @@
+{
+    "cmake.sourceDirectory": "${workspaceFolder}/examples/dual/host_hid_to_device_cdc",
+    "cmake.generator": "NMake Makefiles"
+}
