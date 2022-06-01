@@ -39,6 +39,7 @@
 
 #include "bsp/board.h"
 #include "tusb.h"
+#include "pico/multicore.h"
 
 #include "usb_descriptors.h"
 
@@ -82,6 +83,21 @@ static uint32_t blink_interval_ms = BLINK_NOT_MOUNTED;
 void led_blinking_task(void);
 void hid_task(void);
 
+#ifdef USE_MULTICORE
+// core1: handle host events
+void core1_main() {
+  sleep_ms(10);
+
+  // To run USB SOF interrupt in core1, init host stack for pio_usb (roothub port1)
+  // on core1
+  tuh_init(1);
+
+  while (true) {
+    tuh_task(); // tinyusb host task
+  }
+}
+#endif
+
 /*------------- MAIN -------------*/
 int main(void)
 {
@@ -90,6 +106,20 @@ int main(void)
 
   printf("TinyUSB Host HID <-> Device HID Example\r\n");
 
+#ifdef USE_MULTICORE
+  tud_init(0);
+
+  multicore_reset_core1();
+  multicore_launch_core1(core1_main);
+  puts("launch core1");
+
+  while (1)
+  {
+    tud_task();
+    led_blinking_task();
+    hid_task();
+  }
+#else
   tusb_init();
 
   while (1)
@@ -99,6 +129,7 @@ int main(void)
     led_blinking_task();
     hid_task();
   }
+#endif
 
   return 0;
 }
