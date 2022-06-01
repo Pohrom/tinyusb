@@ -79,6 +79,8 @@ enum  {
 };
 
 static uint32_t blink_interval_ms = BLINK_NOT_MOUNTED;
+static uint32_t unconsumed = 0;
+static hid_mouse_report_t last_report = {0};
 
 void led_blinking_task(void);
 void hid_task(void);
@@ -189,6 +191,14 @@ void tud_cdc_rx_cb(uint8_t itf)
 // tud_hid_report_complete_cb() is used to send the next report after previous one is complete
 void hid_task(void)
 {
+  if ( tud_hid_ready() )
+  {
+    if ( unconsumed > 0 ) {
+       tud_hid_mouse_report(REPORT_ID_MOUSE, last_report.buttons, last_report.x, last_report.y, last_report.wheel, last_report.pan);
+       unconsumed = 0;
+    }
+  }
+
   // Poll every 10ms
   const uint32_t interval_ms = 10;
   static uint32_t start_ms = 0;
@@ -361,19 +371,30 @@ static void process_kbd_report(uint8_t dev_addr, hid_keyboard_report_t const *re
 // send mouse report to usb device CDC
 static void process_mouse_report(uint8_t dev_addr, hid_mouse_report_t const * report)
 {
-  //------------- button state  -------------//
-  //uint8_t button_changed_mask = report->buttons ^ prev_report.buttons;
-  char l = report->buttons & MOUSE_BUTTON_LEFT   ? 'L' : '-';
-  char m = report->buttons & MOUSE_BUTTON_MIDDLE ? 'M' : '-';
-  char r = report->buttons & MOUSE_BUTTON_RIGHT  ? 'R' : '-';
-  char b = report->buttons & MOUSE_BUTTON_BACKWARD  ? 'B' : '-';
-  char f = report->buttons & MOUSE_BUTTON_FORWARD  ? 'F' : '-';
+  if (unconsumed > 0) {
+    char tempbuf[32];
+    int count = sprintf(tempbuf, "[%u] unconsumed: %u\r\n", dev_addr, unconsumed);
 
-  char tempbuf[32];
-  int count = sprintf(tempbuf, "[%u] %c%c%c%c%c %d %d %d\r\n", dev_addr, l, m, r, b, f, report->x, report->y, report->wheel);
+    tud_cdc_write(tempbuf, count);
+    tud_cdc_write_flush();
+  }
+  
+  last_report = *report;
+  unconsumed++;
 
-  tud_cdc_write(tempbuf, count);
-  tud_cdc_write_flush();
+  // //------------- button state  -------------//
+  // //uint8_t button_changed_mask = report->buttons ^ prev_report.buttons;
+  // char l = report->buttons & MOUSE_BUTTON_LEFT   ? 'L' : '-';
+  // char m = report->buttons & MOUSE_BUTTON_MIDDLE ? 'M' : '-';
+  // char r = report->buttons & MOUSE_BUTTON_RIGHT  ? 'R' : '-';
+  // char b = report->buttons & MOUSE_BUTTON_BACKWARD  ? 'B' : '-';
+  // char f = report->buttons & MOUSE_BUTTON_FORWARD  ? 'F' : '-';
+
+  // char tempbuf[32];
+  // int count = sprintf(tempbuf, "[%u] %c%c%c%c%c %d %d %d\r\n", dev_addr, l, m, r, b, f, report->x, report->y, report->wheel);
+
+  // tud_cdc_write(tempbuf, count);
+  // tud_cdc_write_flush();
 }
 
 // Invoked when received report from device via interrupt endpoint
