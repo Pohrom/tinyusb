@@ -194,7 +194,9 @@ void hid_task(void)
   if ( tud_hid_ready() )
   {
     if ( unconsumed > 0 ) {
-       tud_hid_mouse_report(REPORT_ID_MOUSE, last_report.buttons, last_report.x, last_report.y, last_report.wheel, last_report.pan);
+       //tud_hid_n_report(0, 0, &last_report, sizeof(last_report));
+       // 忽略 pan
+       tud_hid_mouse_report(0, last_report.buttons, last_report.x, last_report.y, last_report.wheel, 0);
        unconsumed = 0;
     }
   }
@@ -224,7 +226,8 @@ void hid_task(void)
       int8_t const delta = 5;
 
       // no button, right + down, no scroll pan
-      tud_hid_mouse_report(REPORT_ID_MOUSE, 0x00, delta, delta, 0, 0);
+      //tud_hid_mouse_report(REPORT_ID_MOUSE, 0x00, delta, delta, 0, 0);
+      tud_hid_mouse_report(0, 0x00, delta, delta, 0, 0);
     }
   }
 }
@@ -379,6 +382,13 @@ static void process_mouse_report(uint8_t dev_addr, hid_mouse_report_t const * re
     tud_cdc_write_flush();
   }
   
+  // 记录 report，注意不是所有设备都按 Boot Protocol 兼容的格式发送 report。比如 Razer 鼠标的 pan 值是取错了的，实际上格式是：
+  // Input 5 bit Usage spec.Button.1-5
+  // Input 3 bit No Usage (padding)
+  // Input 1*2 byte Vendor-FF00.40
+  // Input 1 byte spec.GDCs.Wheel
+  // Input 2 byte spec.GDCs.X -32768,32767
+  // Input 2 byte spec.GDCs.Y -32768,32767
   last_report = *report;
   unconsumed++;
 
