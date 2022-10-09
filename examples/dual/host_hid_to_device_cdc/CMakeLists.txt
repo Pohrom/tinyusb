@@ -29,6 +29,8 @@ target_include_directories(${PROJECT} PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/src
         )
 
+target_link_libraries(${PROJECT} PUBLIC pico_multicore)
+
 # Configure compilation flags and libraries for the example... see the corresponding function
 # in hw/bsp/FAMILY/family.cmake for details.
 family_configure_dual_usb_example(${PROJECT})

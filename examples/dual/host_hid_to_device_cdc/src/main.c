@@ -191,13 +191,15 @@ void tud_cdc_rx_cb(uint8_t itf)
 // tud_hid_report_complete_cb() is used to send the next report after previous one is complete
 void hid_task(void)
 {
+  static bool recoil_control = false;
+
   if ( tud_hid_ready() )
   {
     if ( unconsumed > 0 ) {
-       //tud_hid_n_report(0, 0, &last_report, sizeof(last_report));
-       // 忽略 pan
-       tud_hid_mouse_report(0, last_report.buttons, last_report.x, last_report.y, last_report.wheel, 0);
-       unconsumed = 0;
+      // tud_hid_n_report(0, 0, &last_report, sizeof(last_report));
+      // 忽略 pan
+      tud_hid_mouse_report(0, last_report.buttons, last_report.x, last_report.y, last_report.wheel, 0);
+      unconsumed = 0;
     }
   }
 
@@ -221,6 +223,27 @@ void hid_task(void)
   /*------------- Mouse -------------*/
   if ( tud_hid_ready() )
   {
+    // overwatch solider76 recoil controll
+    // set enable or disable
+    if (last_report.buttons & MOUSE_BUTTON_BACKWARD) {
+      recoil_control = !recoil_control;
+      printf("set recoil control: %d\n", recoil_control);
+    } 
+    // match recoil pattern
+    static int recoil_status = 0;
+    if (!(last_report.buttons & MOUSE_BUTTON_LEFT)) {
+      recoil_status = 0;
+    }
+    // send mouse movement
+    if (recoil_control && (last_report.buttons & MOUSE_BUTTON_LEFT)) {
+      int8_t delta = 1;
+      if (recoil_status > 55) { // 100ms
+        delta = 2;
+      }
+      recoil_status++; 
+      tud_hid_mouse_report(0, last_report.buttons, 0, delta, 0, 0);
+    }
+
     if ( btn )
     {
       int8_t const delta = 5;
